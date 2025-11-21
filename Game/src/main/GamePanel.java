@@ -17,7 +17,7 @@ public class GamePanel extends JPanel{
 
     private MouseInputs mouseInputs;
     private int xDelta = 100, yDelta = 100;
-    private BufferedImage img, subImg;
+    private BufferedImage img;
     private BufferedImage[][] animations;
     private int aniTick, aniIndex, aniSpeed = 15;
     private int playerAction = IDLE;
@@ -72,13 +72,7 @@ public class GamePanel extends JPanel{
 
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
-        subImg = img.getSubimage(1*64, 8*40, 64, 40);
-        updateAnimationTick();
-
-        setAnimation();
-        updatePosition();
-
-        g.drawImage(animations[playerAction][aniIndex], (int) xDelta, (int) yDelta, 256, 160, null);
+        g.drawImage(animations[playerAction][aniIndex],xDelta, yDelta, 256, 160, null);
         Toolkit.getDefaultToolkit().sync();
     }
 
@@ -116,5 +110,11 @@ public class GamePanel extends JPanel{
                 aniIndex = 0;
             }
         }
+    }
+
+    public void updateGame() {
+        updateAnimationTick();
+        setAnimation();
+        updatePosition();
     }
 }
