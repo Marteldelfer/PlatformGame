@@ -1,11 +1,13 @@
 package entities;
 
+import main.Game;
 import utils.LoadSave;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
 import static utils.Constants.PlayerConstants.*;
+import static utils.HelpMethods.canMoveHere;
 
 public class Player extends Entity {
 
@@ -16,9 +18,15 @@ public class Player extends Entity {
     private boolean left, up, right, down;
     private float playerSpeed = 2;
 
+    private float xDrawOffset = 21 * Game.SCALE;
+    private float yDrawOffset = 4 * Game.SCALE;
+
+    private int[][] levelData;
+
     public Player(float x, float y, int width, int height) {
         super(x, y, width, height);
         loadAnimations();
+        initHitbox(x, y, 20 * Game.SCALE, 28 * Game.SCALE);
     }
 
     public void update() {
@@ -28,7 +36,8 @@ public class Player extends Entity {
     }
 
     public void render(Graphics g) {
-        g.drawImage(animations[playerAction][aniIndex], (int) x, (int) y, width, height, null);
+        g.drawImage(animations[playerAction][aniIndex], (int)(hitbox.x - xDrawOffset), (int) (hitbox.y - yDrawOffset), width, height, null);
+        drawHitbox(g);
         Toolkit.getDefaultToolkit().sync();
     }
 
@@ -43,22 +52,29 @@ public class Player extends Entity {
         }
     }
 
+    public void loadLevelData(int[][] levelData) {
+        this.levelData = levelData;
+    }
+
     private void updatePosition() {
         moving = false;
+        if (!left && !right && !up && !down) return;
 
-        if (left && !right) {
-            x -= playerSpeed;
-            moving = true;
-        } else if (right && !left) {
-            x += playerSpeed;
-            moving = true;
+        float xSpeed = 0, ySpeed = 0;
+
+        if (left && !right) xSpeed -= playerSpeed;
+        else if (right && !left) xSpeed += playerSpeed;
+
+        if (up && !down) ySpeed -= playerSpeed;
+        else if (down && !up) ySpeed += playerSpeed;
+
+        if (canMoveHere(hitbox.x + xSpeed, hitbox.y, hitbox.width, hitbox.height, levelData)) {
+            this.hitbox.x += xSpeed;
+            if (xSpeed != 0) moving = true;
         }
-        if (up && !down) {
-            y -= playerSpeed;
-            moving = true;
-        } else if (down && !up) {
-            y += playerSpeed;
-            moving = true;
+        if (canMoveHere(hitbox.x, hitbox.y + ySpeed, hitbox.width, hitbox.height, levelData)) {
+            this.hitbox.y += ySpeed;
+            if (ySpeed != 0) moving = true;
         }
     }
 
