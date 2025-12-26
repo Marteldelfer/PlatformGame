@@ -7,7 +7,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 
 import static utils.Constants.PlayerConstants.*;
-import static utils.HelpMethods.canMoveHere;
+import static utils.HelpMethods.*;
 
 public class Player extends Entity {
 
@@ -15,8 +15,15 @@ public class Player extends Entity {
     private int aniTick, aniIndex, aniSpeed = 20;
     private int playerAction = IDLE, previousAction = IDLE;
     private boolean moving = false, attacking = false;
-    private boolean left, up, right, down;
+    private boolean left, up, right, down, jump;
     private float playerSpeed = 2;
+
+    // Jumping / Gravity
+    private float airSpeed = 0f;
+    private float gravity = 0.04f * Game.SCALE;
+    private float jumpSpeed = -2.25f * Game.SCALE;
+    private float fallSpeedAfterColision = 0.5f * Game.SCALE;
+    private boolean inAir;
 
     private float xDrawOffset = 21 * Game.SCALE;
     private float yDrawOffset = 4 * Game.SCALE;
@@ -26,7 +33,7 @@ public class Player extends Entity {
     public Player(float x, float y, int width, int height) {
         super(x, y, width, height);
         loadAnimations();
-        initHitbox(x, y, 20 * Game.SCALE, 28 * Game.SCALE);
+        initHitbox(x, y, 20 * Game.SCALE, 27 * Game.SCALE);
     }
 
     public void update() {
@@ -54,27 +61,62 @@ public class Player extends Entity {
 
     public void loadLevelData(int[][] levelData) {
         this.levelData = levelData;
+        if (!isEntityOnFloor(hitbox, levelData)) {
+            inAir = true;
+        }
     }
 
     private void updatePosition() {
         moving = false;
-        if (!left && !right && !up && !down) return;
+        if (jump) jump();
+        if (!left && !right && !inAir) return;
 
-        float xSpeed = 0, ySpeed = 0;
+        float xSpeed = 0;
 
-        if (left && !right) xSpeed -= playerSpeed;
-        else if (right && !left) xSpeed += playerSpeed;
+        if (left) xSpeed -= playerSpeed;
+        if (right) xSpeed += playerSpeed;
+        if (!inAir) {
+            if (!isEntityOnFloor(hitbox, levelData)) {
+                inAir = true;
+            }
+        }
 
-        if (up && !down) ySpeed -= playerSpeed;
-        else if (down && !up) ySpeed += playerSpeed;
+        if (inAir) {
+            if (canMoveHere(hitbox.x, hitbox.y + airSpeed, hitbox.width, hitbox.height, levelData)) {
+                hitbox.y += airSpeed;
+                airSpeed += gravity;
+                updateXposition(xSpeed);
+            } else {
+                hitbox.y = getEntityYPosUnderRoofOrAboveFloor(hitbox, airSpeed);
+                if (airSpeed > 0) {
+                    resetInAir();
+                } else {
+                    airSpeed = fallSpeedAfterColision;
+                }
+                updateXposition(xSpeed);
+            }
+        } else {
+            updateXposition(xSpeed);
+        }
+        moving = true;
+    }
 
+    private void jump() {
+        if (inAir) return;
+        inAir = true;
+        airSpeed = jumpSpeed;
+    }
+
+    private void resetInAir() {
+        inAir = false;
+        airSpeed = 0;
+    }
+
+    private void updateXposition(float xSpeed) {
         if (canMoveHere(hitbox.x + xSpeed, hitbox.y, hitbox.width, hitbox.height, levelData)) {
             this.hitbox.x += xSpeed;
-            if (xSpeed != 0) moving = true;
-        }
-        if (canMoveHere(hitbox.x, hitbox.y + ySpeed, hitbox.width, hitbox.height, levelData)) {
-            this.hitbox.y += ySpeed;
-            if (ySpeed != 0) moving = true;
+        } else {
+            hitbox.x = getEntityXPosNextToWall(hitbox, xSpeed);
         }
     }
 
@@ -85,6 +127,14 @@ public class Player extends Entity {
         } else {
             playerAction = IDLE;
         }
+        if (inAir) {
+            if (airSpeed < 0) {
+                playerAction = JUMP;
+            } else {
+                playerAction = FALLING;
+            }
+        }
+
         if (attacking) {
             playerAction = ATTACK_1;
         }
@@ -135,5 +185,9 @@ public class Player extends Entity {
 
     public void setLeft(boolean left) {
         this.left = left;
+    }
+
+    public void setJump(boolean jump) {
+        this.jump = jump;
     }
 }
